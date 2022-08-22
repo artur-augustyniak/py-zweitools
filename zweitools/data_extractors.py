@@ -4,7 +4,6 @@ import requests
 import asyncio
 import zweitools.data_validators as dv
 import re
-from schwifty import IBAN
 logger = logging.getLogger(__name__)
 
 
@@ -22,8 +21,9 @@ async def follow_redirection(url: str, timeout: int) -> str:
     def exec_thunk():
         try:
             logger.debug(f"following redir for {url}")
-            resulting = requests.get(url, timeout=timeout).url.strip("\"'/")
-            logger.debug(f"resulting redir for {url} id {resulting}")
+            resulting = requests.get(
+                url, timeout=timeout).url.strip("\"'/")
+            logger.debug(f"resulting redir for {url} result {resulting}")
             if url != resulting:
                 return resulting
             else:
@@ -38,7 +38,7 @@ async def follow_redirection(url: str, timeout: int) -> str:
     return result if result is not None else url
 
 
-def extract_urls(text: str, follow=False, timeout=3) -> list[str]:
+def extract_urls(text: str, follow=False, timeout=10) -> list[str]:
     ret_urls = []
     pattern = r"(?P<url>https?://[^\s]+)"
     urls = re.findall(pattern, text)
@@ -59,87 +59,108 @@ def extract_urls(text: str, follow=False, timeout=3) -> list[str]:
     return list(set(ret_urls))
 
 
-def extract_md5s(text: str) -> list[str]:
-    return ["md5"]
+def extract_hashes(text: str) -> list[dict]:
+    resulting_hashes = []
+    sha256list = list(set(re.findall(dv.HashKind.SHA256.value, text)))
+    resulting_hashes += sha256list
+    hashes_concat = "".join(resulting_hashes)
+    for sha1 in re.findall(dv.HashKind.SHA1.value, text):
+        if sha1 not in hashes_concat:
+            resulting_hashes.append(sha1)
+    hashes_concat = "".join(list(set(resulting_hashes)))
+    for md5 in re.findall(dv.HashKind.MD5.value, text):
+        if md5 not in hashes_concat:
+            resulting_hashes.append(md5)
+    resulting_hashes = list(set(resulting_hashes))
+    res = []
+    for h in resulting_hashes:
+        res.append({
+            "kind": dv.recog_hash(h).name.lower(),
+            "value": h.lower()
+        })
+    return res
 
-#   tweet_body = ioc_fanger.fang(
-#         body.replace("[", "").replace("]", ""))
-#     resulting_hashes = []
-#     sha256list = list(set(re.findall(HashKind.SHA256.value, tweet_body)))
-#     resulting_hashes += sha256list
-#     hashes_concat = "".join(resulting_hashes)
-#     for sha1 in re.findall(HashKind.SHA1.value, tweet_body):
-#         if sha1 not in hashes_concat:
-#             resulting_hashes.append(sha1)
-#     hashes_concat = "".join(list(set(resulting_hashes)))
-#     for md5 in re.findall(HashKind.MD5.value, tweet_body):
-#         if md5 not in hashes_concat:
-#             resulting_hashes.append(md5)
-#     resulting_hashes = list(set(resulting_hashes))
 
-def extract_sha1s(text: str) -> list[str]:
-    return ["sha1"]
+def extract_domains(text: str) -> list[str]:
+    found = []
+    pattern = r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}'
+    domains = re.findall(pattern, text)
+    for d in domains:
+        if dv.is_domain(d):
+            found.append(d)
+
+    return list(set(found))
 
 
-def extract_sha256s(text: str) -> list[str]:
-    return ["sha266"]
+def extract_ips(text: str) -> list[str]:
+    found = []
+    ips = re.findall(r"(?P<ips>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", text)
+    for ip in ips:
+        if dv.is_public_ipv4(ip):
+            found.append(ip)
+
+    return list(set(found))
+
+
+def extract_nrbs(text: str) -> list[str]:
+    found = []
+    nrbs = re.findall(r'([0-9]{2}(?:[ \-]?[0-9]{4}){6})', text)
+    for nrb in nrbs:
+        nrb = nrb.replace(" ", "")
+        if nrb[0].isdigit():
+            nrb = "PL" + nrb
+        try:
+            iban = IBAN(nrb)
+            found.append(nrb)
+        except Exception as e:
+            logger.warning(f"nrb validation error {nrb} {str(e)}")
+
+    ibans = re.findall(
+        r'[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}(?:[a-zA-Z0-9]?){0,16}', text.replace(" ", ""))
+    for iban in ibans:
+        if iban[2:] not in nrbs:
+            found.append(iban)
+    return list(set(found))
+
+
+def extract_phones(text: str) -> list[str]:
+    found = []
+    #  would recommend to use the phonenumbers package which is a python port of Google's libphonenumber which includes a data set of mobile carriers now:
+
+    # import phonenumbers
+    # from phonenumbers import carrier
+    # from phonenumbers.phonenumberutil import number_type
+
+    # number = "+49 176 1234 5678"
+    # carrier._is_mobile(number_type(phonenumbers.parse(number)))
+
+    # phones = re.findall(r'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]', text)
+    # for p in phones:
+    #     found.append(p)
+    return list(set(found))
+
+
+def extract_pii(text: str) -> list[object]:
+    ret = []
+    emails = list(
+        set(re.findall(r"[a-z0-9\.\-+_]+@[a-z0-9\.\-+_]+\.[a-z]+", text)))
+    for e in emails:
+        if dv.is_email(e):
+            ret.append({
+                "kind": "pii_email",
+                "value": e.lower()
+            })
+
+    # username:pass pair
+    # pid
+    # i inne
+    return ret
+
+
+def extract_btc(text: str) -> list[str]:
+    # dv.is_btc(value)
+    return []
 
 
 if __name__ == '__main__':
     logger.critical("This is not the main module")
-
-   # phone numbers pids
-
-#   def expand_domains(self):
-#         pattern = r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}'
-#         found_STUB = "EXTRACTED_DOMAIN"
-#         domains = re.findall(pattern, self.entity)
-#         for d in domains:
-#             if True:
-#                 self.append_child(
-#                     make_netloc(d),
-#                     BaseEntityType.PERMANENT_ENTITY
-#                 )
-#         self.entity = re.sub(pattern, found_STUB, self.entity)
-
-
-#    def expand_ips(self):
-#         ips = re.findall(
-#             r"(?P<ips>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", self.entity)
-#         for ip in ips:
-#             if is_public_ipv4(ip):
-#                 self.append_child(
-#                     make_netloc(ip),
-#                     BaseEntityType.PERMANENT_ENTITY
-#                 )
-
-#     def expand_nrbs(self):
-#         # nrbs = re.findall(r'\d{26}', self.entity.replace(" ", ""))
-#         nrbs = re.findall(r'([0-9]{2}(?:[ \-]?[0-9]{4}){6})', self.entity)
-
-#         # nrbs = re.findall(
-#         #     r"([0-9]{2})(?=(?:[ \-]?[A-Z0-9]){9,30}$)((?:[ \-]?[A-Z0-9]{3,5}){2,7})([ \-]?[A-Z0-9]{1,3})?$", self.entity)
-
-#         for nrb in nrbs:
-
-#             nrb = nrb.replace(" ", "")
-#             if nrb[0].isdigit():
-#                 nrb = "PL" + nrb
-#             try:
-#                 iban = IBAN(nrb)
-#                 self.append_child(
-#                     NRB(nrb),
-#                     BaseEntityType.PERMANENT_ENTITY
-#                 )
-#             except Exception as e:
-#                 logger.warn("NRB VALIDATION ERROR %s %s" % (nrb, str(e)))
-
-
-#         ibans = re.findall(
-#             r'[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}(?:[a-zA-Z0-9]?){0,16}', self.entity.replace(" ", ""))
-#         for iban in ibans:
-#             if iban[2:] not in nrbs:
-#                 self.append_child(
-#                     NRB(iban),
-#                     BaseEntityType.PERMANENT_ENTITY
-#                 )
