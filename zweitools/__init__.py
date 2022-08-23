@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 
 from .event_validator import EventValidator
-
-# from .events import EventEmmiter
-
-
+from .zweitip_api_client import ZapiClient
+from .zweitip_rabbit_client import ZrabbitClient
 
 __all__ = [
     "EventValidator"
-    # "recog_hash",
-    # "HashKind",
+    "ZapiClient",
+    "ZrabbitClient"
 ]
-
 
 if __name__ == "__main__":
     pass

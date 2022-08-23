@@ -76,7 +76,7 @@ def extract_hashes(text: str) -> list[dict]:
     for h in resulting_hashes:
         res.append({
             "kind": dv.recog_hash(h).name.lower(),
-            "value": h.lower()
+            "value": h
         })
     return res
 
@@ -148,7 +148,7 @@ def extract_pii(text: str) -> list[object]:
         if dv.is_email(e):
             ret.append({
                 "kind": "pii_email",
-                "value": e.lower()
+                "value": e
             })
 
     # username:pass pair
