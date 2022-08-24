@@ -3,6 +3,7 @@
 import logging
 import threading
 import pika
+import traceback
 import json
 from typing import Callable
 logger = logging.getLogger(__name__)
