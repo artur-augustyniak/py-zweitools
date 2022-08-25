@@ -22,7 +22,7 @@ async def follow_redirection(url: str, timeout: int) -> str:
         try:
             logger.debug(f"following redir for {url}")
             resulting = requests.get(
-                url, timeout=timeout).url.strip("\"'/")
+                url, timeout=timeout, verify=False).url.strip("\"'/")
             logger.debug(f"resulting redir for {url} result {resulting}")
             if url != resulting:
                 return resulting
