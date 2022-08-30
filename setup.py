@@ -13,6 +13,7 @@ setup(
         "py-telegram-notifier==0.1.0.post2",
         "schwifty==2022.7.1",
         "validators==0.20.0",
+        "ioc-fanger==4.0.0",
     ],
 
     classifiers=[
