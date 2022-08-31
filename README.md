@@ -5,6 +5,7 @@
 
 Zweitip API client usage:
 
+Direct search:
 ```python
 #!/usr/bin/env python3
 import logging
@@ -42,4 +43,19 @@ if __name__ == "__main__":
     print(json.dumps(resp))
 
     logging.info("Finished")
+```
+
+Iterate over all found items (ignore pagination):
+```python
+    search_descriptor = (
+        SearchDescriptor()
+        .sort("_id", SortOrder.DESC)
+        .filtering_params(whole_word=False, ignore_case=True)
+        .add_filter("tags", "banker")
+        .add_filter("tags", "joker")
+        .shape(["_id", "created_at"])
+    )
+    items = api_client.get_results_iterator(ZapiEndpoint.MISC_DATA, search_descriptor)
+    for i in items:
+        print(i)
 ```
