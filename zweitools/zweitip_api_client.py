@@ -5,7 +5,7 @@ from datetime import datetime as dt
 import json
 from http import HTTPStatus as HS
 from enum import Enum
-from typing import TypeAlias
+from typing import TypeAlias, Iterable
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = logging.getLogger(__name__)
@@ -135,6 +135,43 @@ class ZapiClient(object):
         )
 
         return response.status_code, response.json()
+
+    def get_results_iterator(self, endpoint: ZapiEndpoint, search_params: SearchDescriptor = None) -> Iterable[dict]:
+        if search_params is None:
+            params = {}
+        else:
+            params = search_params.to_dict()
+        if params.get("limit") or params.get("offset"):
+            logger.warning(
+                "in iterator mode your limit and offset search params will be ignored")
+        per_page = 300
+        offset = 0
+        while True:
+            params['limit'] = per_page,
+            params['offset'] = offset
+
+            url = f"{self.base_url}{endpoint.value}/"
+            response = requests.get(
+                url,
+                headers=self.headers,
+                params=params,
+                verify=self.verify_cert
+            )
+
+            status, response = response.status_code, response.json()
+
+            if status not in ZapiClient.GET_SUCCESS_CODES:
+                msg = f"iterator mode cannot fetch data for {endpoint.value} staus code {status} msg {str(response)}"
+                logger.error(msg)
+                return []
+            else:
+                items = response.get("results", [])
+                for item in items:
+                    yield item
+
+                if len(items) < per_page:
+                    break
+                offset += per_page
 
     def patch(self,
               endpoint: ZapiEndpoint,
