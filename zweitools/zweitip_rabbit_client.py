@@ -89,7 +89,9 @@ class ZrabbitClient(object):
                  source_topic: str,
                  target_queue: str,
                  target_topic: str,
+                 prefetch_cout: int = 250
                  ):
+        self.prefetch_cout = prefetch_cout
         self.rabbit_url = rabbit_url
         self.source_queue = source_queue
         self.queue_writer = QueueWriter(
@@ -132,6 +134,7 @@ class ZrabbitClient(object):
         params = pika.URLParameters(self.rabbit_url)
         connection = pika.BlockingConnection(params)
         channel = connection.channel()
+        channel.basic_qos(prefetch_count=self.prefetch_cout)
         channel.queue_declare(self.source_queue, durable=True)
 
         channel.basic_consume(
