@@ -19,7 +19,7 @@ def date_time_str_lte_now_minus(
     time_zone: str = "Europe/Warsaw"
 ) -> bool:
     now = tz_now(time_zone)
-    lte_date = now - td(minutes)
+    lte_date = now - td(minutes=minutes)
     date_t = parse(date_time)
     return date_t <= lte_date
 
