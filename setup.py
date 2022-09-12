@@ -14,7 +14,7 @@ setup(
         "schwifty==2022.7.1",
         "validators==0.20.0",
         "ioc-fanger==4.0.0",
-        "pytz==*",
+        "pytz",
     ],
 
     classifiers=[
