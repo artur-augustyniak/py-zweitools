@@ -37,6 +37,7 @@ class ZapiEndpoint(Enum):
     APK_SIGNATURE = "/api/v1.0/apk/signature"
     APK_NAMELIST = "/api/v1.0/apk/namelist"
     ARTIFACT_REPORT = "/api/v1.0/artifact/report"
+    ARTIFACT_URL = "/api/v1.0/artifact/url"
 
 
 class SearchDescriptor(object):
@@ -193,6 +194,25 @@ class ZapiClient(object):
             return response.status_code, response.json()
         except Exception as e:
             msg = f"ZapiClient internal error for event {e_id} {str(e)}"
+            logger.critical(msg, exc_info=True)
+            return HS.IM_A_TEAPOT.value, {"error": msg}
+
+    def post(self,
+             endpoint: ZapiEndpoint,
+             event: dict,
+             ) -> RequestResult:
+        try:
+
+            url = f"{self.base_url}{endpoint.value}/"
+            response = requests.post(
+                url,
+                headers=self.headers,
+                data=json.dumps(event),
+                verify=self.verify_cert
+            )
+            return response.status_code, response.json()
+        except Exception as e:
+            msg = f"ZapiClient internal error for event {json.dumps(event)} {str(e)}"
             logger.critical(msg, exc_info=True)
             return HS.IM_A_TEAPOT.value, {"error": msg}
 
