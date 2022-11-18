@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
+from typing import TypeAlias
 import logging
 import requests
 import asyncio
+import tldextract
 import zweitools.data_validators as dv
 import re
 logger = logging.getLogger(__name__)
+
+
+DomainInfo: TypeAlias = tuple[tldextract.tldextract.ExtractResult, str]
+
+
+def extract_domain_info(url_or_domain: str) -> DomainInfo:
+    if not dv.is_url(url_or_domain) and not dv.is_domain(url_or_domain):
+        return None, f"{url_or_domain} is not a url nor a domain"
+    tldex = tldextract.extract(url_or_domain)
+    return tldex, "ok"
 
 
 def extract_hashtags(text: str) -> list[str]:

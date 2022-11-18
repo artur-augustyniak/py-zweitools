@@ -26,6 +26,12 @@ class DateOP(Enum):
     NE = "ne"
 
 
+class AdHocZapiEndpont(object):
+
+    def __init__(self, value) -> None:
+        self.value = value
+
+
 class ZapiEndpoint(Enum):
     PHISHING_DOMAIN = "/api/v1.0/phishing/domain"
     MISC_STRING = "/api/v1.0/misc/string"
@@ -38,6 +44,10 @@ class ZapiEndpoint(Enum):
     APK_NAMELIST = "/api/v1.0/apk/namelist"
     ARTIFACT_REPORT = "/api/v1.0/artifact/report"
     ARTIFACT_URL = "/api/v1.0/artifact/url"
+    CTI_STIX_SRO = "/api/v1.0/cti/stix/sro"
+    CTI_STIX_SDO = "/api/v1.0/cti/stix/sdo"
+    CTI_STIX_UNRECOG = "/api/v1.0/cti/stix/unrecog"
+    CTI_STIX_BUNDLE = "/api/v1.0/cti/stix/bundle"
 
 
 class SearchDescriptor(object):
@@ -211,6 +221,49 @@ class ZapiClient(object):
                 verify=self.verify_cert
             )
             return response.status_code, response.json()
+        except Exception as e:
+            msg = f"ZapiClient internal error for event {json.dumps(event)} {str(e)}"
+            logger.critical(msg, exc_info=True)
+            return HS.IM_A_TEAPOT.value, {"error": msg}
+
+    def post_get(self,
+                 endpoint: ZapiEndpoint,
+                 event: dict,
+                 ) -> RequestResult:
+        try:
+
+            url = f"{self.base_url}{endpoint.value}/"
+            response = requests.post(
+                url,
+                headers=self.headers,
+                data=json.dumps(event),
+                verify=self.verify_cert
+            )
+
+            if response.status_code == HS.CONFLICT:
+                dup_key_def = response.json()
+                search_descriptor = (
+                    SearchDescriptor()
+                    .limit(1)
+                )
+                search_keys = dup_key_def.get('detail', {}).get('key', {})
+                count_keys = 0
+                for k, v in search_keys.items():
+                    search_descriptor = search_descriptor.add_filter(k, v)
+                    count_keys += 1
+
+                if count_keys == 0:
+                    return HS.NOT_FOUND, dup_key_def
+                else:
+                    status, resp = self.get_many(endpoint, search_descriptor)
+                    resuslting_objs = resp.get('results', [])
+                    obj = {}
+                    if resuslting_objs:
+                        obj = resuslting_objs[0]
+
+                    return status, obj
+            else:
+                return response.status_code, response.json()
         except Exception as e:
             msg = f"ZapiClient internal error for event {json.dumps(event)} {str(e)}"
             logger.critical(msg, exc_info=True)

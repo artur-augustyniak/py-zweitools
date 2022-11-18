@@ -3,6 +3,7 @@
 from .event_validator import EventValidator
 from .zweitip_api_client import ZapiClient
 from .zweitip_api_client import ZapiEndpoint
+from .zweitip_api_client import AdHocZapiEndpont
 from .zweitip_api_client import SearchDescriptor
 from .zweitip_api_client import SortOrder
 from .zweitip_api_client import DateOP
@@ -18,6 +19,7 @@ __all__ = [
     "EventValidator"
     "ZapiClient",
     "ZapiEndpoint",
+    "AdHocZapiEndpont",
     "ZrabbitClient",
     "ZeventHandlerABC",
     "SearchDescriptor",
